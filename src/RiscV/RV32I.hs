@@ -1,6 +1,7 @@
 {-# LANGUAGE PatternSynonyms #-}
 module RiscV.RV32I
   ( Register(..)
+  , CSRRegister(..)
   , Instr(..)
   -- * Integer Register-Immediate Instructions
   , RegisterImmediateInstr(..)
@@ -22,8 +23,7 @@ module RiscV.RV32I
   , SyncOrdering(..)
   -- * Control and Status Register Instructions
   , CSRInstr(..)
-  , CSRIOpcode(..)
-  , CSRROpcode(..)
+  , CSRType(..)
   -- * Environment Call and Breakpoints
   , EnvironmentInstr(..)
   -- * Word Types
@@ -40,14 +40,15 @@ data Instr
   | EnvironmentInstr !EnvironmentInstr
   | JumpInstr !JumpInstr
   | MemoryInstr !MemoryInstr
-  | RRInstr !RegisterImmediateInstr
-  | RIInstr !RegisterRegisterInstr
+  | RRInstr !RegisterRegisterInstr
+  | RIInstr !RegisterImmediateInstr
   | SyncInstr !SynchronizationInstr
 
 data JumpInstr
   = JAL !Word20
         !Register
   | JALR !Word12
+         !Register
          !Register
 
 data BranchCond
@@ -56,10 +57,10 @@ data BranchCond
   | BLT
   | BLTU
   | BGE
-  | BEGU
+  | BGEU
 
 data BranchInstr =
-  Branch !Word20
+  Branch !Word12
          !BranchCond
          !Register
          !Register
@@ -99,14 +100,17 @@ data ShiftOpcode
 
 data RegisterImmediateInstr
   = IInstr !IOpcode
-           !Word20
+           !Word12
            !Register
            !Register
-  | ShiftInstr !Word5
+  | ShiftInstr !ShiftOpcode
+               !Word5
                !Register
                !Register
-  | LUI !Word20 !Register
-  | AUIPC !Word20 !Register
+  | LUI !Word20
+        !Register
+  | AUIPC !Word20
+          !Register
 
 data ROpcode
   = ADD
@@ -142,24 +146,22 @@ data EnvironmentInstr
   = ECALL
   | EBREAK
 
--- | Control and status register instruction opcode using a register
-data CSRROpcode
-  = CSRRW
-  | CSRRS
-  | CSRRC
+-- | Control and status register instruction type
+data CSRType
+  = ReadWrite
+  | ReadSet
+  | ReadClear
 
--- | Control and status register instruction opcode using an immediate
-data CSRIOpcode
-  = CSRRWI
-  | CSRRSI
-  | CSRCI
+newtype CSRRegister = CSRRegister Word12
 
 -- | Control and Status Register Instructions
 data CSRInstr
-  = CSRRInstr !CSRROpcode
+  = CSRRInstr !CSRType
+              !CSRRegister
               !Register
               !Register
-  | CSRIInstr !CSRROpcode
+  | CSRIInstr !CSRType
+              !CSRRegister
               !Word5
               !Register
 
