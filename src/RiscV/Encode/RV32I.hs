@@ -1,12 +1,12 @@
 {-# LANGUAGE BinaryLiterals #-}
 module RiscV.Encode.RV32I
-  (encodeInstr
+  ( encodeInstr
   ) where
 
 import Data.Bits
-import Data.List (foldl')
 import Data.Word
 import Prelude hiding (reads)
+import RiscV.Internal.Util
 import RiscV.RV32I
 
 encodeInstr :: Instr -> Word32
@@ -18,13 +18,6 @@ encodeInstr (MemoryInstr memInstr) = encodeMemoryInstr memInstr
 encodeInstr (RRInstr rrInstr) = encodeRegisterRegisterInstr rrInstr
 encodeInstr (RIInstr riInstr) = encodeRegisterImmediateInstr riInstr
 encodeInstr (SyncInstr syncInstr) = encodeSynchronizationInstr syncInstr
-
-bitMaskFromTo :: Int -> Int -> Word32
-bitMaskFromTo low high = foldl' (.|.) zeroBits (map bit [low..high])
-
--- | Bits not in the range are set to 0
-bitsFromTo :: Int -> Int -> Word32 -> Word32
-bitsFromTo low high w = w .&. bitMaskFromTo low high
 
 -- | imm[12] | imm[10:5] | rs2 | rs1 | funct3 | imm[4:1] | imm[11] | opcode
 encodeBranchInst :: BranchInstr -> Word32
