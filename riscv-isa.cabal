@@ -1,5 +1,5 @@
 name:                riscv-isa
-version:             0.0.2.0
+version:             0.1.0.0
 synopsis:            Haskell representation of the RISC-V instruction set architecture
 description:         Please see README.md
 homepage:            https://github.com/cocreature/riscv-isa#readme
