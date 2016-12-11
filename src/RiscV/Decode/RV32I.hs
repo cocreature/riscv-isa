@@ -12,7 +12,9 @@ import Data.Word
 import RiscV.Internal.Util
 import RiscV.RV32I
 
-data DecodingError = DecodingError { errorMsg :: String }
+data DecodingError = DecodingError
+  { errorMsg :: !String
+  } deriving (Show, Eq, Ord)
 
 decodeInstr :: MonadError DecodingError m => Word32 -> m Instr
 decodeInstr word =
@@ -30,7 +32,7 @@ decodeInstr word =
     0b0001111 -> SyncInstr <$> decodeSyncInstr word
     _ -> throwError $ DecodingError ("Unsupported opcode: " <> show opCode)
   where
-    opCode = bitsFromTo 0 7 word
+    opCode = bitsFromTo 0 6 word
 
 decodeBranchCond :: MonadError DecodingError m => Word32 -> m BranchCond
 decodeBranchCond cond =
@@ -69,8 +71,8 @@ decodeCSROrEnvInstr word =
 decodeEnvInstr :: Applicative m => Word32 -> m EnvironmentInstr
 decodeEnvInstr word =
   if testBit word 20
-    then pure ECALL
-    else pure EBREAK
+    then pure EBREAK
+    else pure ECALL
 
 decodeCSRType :: MonadError DecodingError m => Word32 -> m CSRType
 decodeCSRType twoBits = case twoBits of
@@ -83,10 +85,10 @@ decodeCSRInstr :: MonadError DecodingError m => Word32 -> m CSRInstr
 decodeCSRInstr word = do
   csrType <- decodeCSRType (extractBits 12 13 word)
   if testBit word 14
-    then let src = decodeRegister (extractBits 15 19 word)
-         in pure $ CSRRInstr csrType csr src dest
-    else let zimm = Word5 . fromIntegral $ extractBits 15 19 word
+    then let zimm = Word5 . fromIntegral $ extractBits 15 19 word
          in pure $ CSRIInstr csrType csr zimm dest
+    else let src = decodeRegister (extractBits 15 19 word)
+         in pure $ CSRRInstr csrType csr src dest
   where
     csr = CSRRegister . Word12 . fromIntegral $ extractBits 20 31 word
     dest = decodeRegister (extractBits 7 11 word)
@@ -197,7 +199,7 @@ decodeRIInstr word =
     shiftOpcode <- decodeShiftOpcode (testBit word 30) opcode
     pure (ShiftInstr shiftOpcode shamt src dest)
   else do let immediate = Word12 (fromIntegral $ extractBits 20 31 word)
-          iOpcode <- decodeIOpcode word
+          iOpcode <- decodeIOpcode opcode
           pure (IInstr iOpcode immediate src dest)
   where dest = decodeRegister (extractBits 7 11 word)
         src = decodeRegister (extractBits 15 19 word)

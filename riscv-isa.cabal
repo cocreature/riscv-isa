@@ -26,6 +26,17 @@ library
   default-language:    Haskell2010
   ghc-options:         -Wall
 
+test-suite riscv-isa-test
+  type:               exitcode-stdio-1.0
+  hs-source-dirs:     test
+  other-modules:      RiscV.RV32ISpec
+  main-is:            Spec.hs
+  build-depends:      base
+                    , hspec
+                    , QuickCheck
+                    , riscv-isa
+  default-language:   Haskell2010
+
 source-repository head
   type:     git
   location: https://github.com/cocreature/riscv-isa

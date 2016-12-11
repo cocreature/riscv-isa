@@ -38,8 +38,8 @@ encodeBranchCond :: BranchCond -> Word32
 encodeBranchCond BEQ = 0b000
 encodeBranchCond BNE = 0b001
 encodeBranchCond BLT = 0b100
-encodeBranchCond BLTU = 0b101
-encodeBranchCond BGE = 0b110
+encodeBranchCond BGE = 0b101
+encodeBranchCond BLTU = 0b110
 encodeBranchCond BGEU = 0b111
 
 encodeCSRInstr :: CSRInstr -> Word32
@@ -77,7 +77,7 @@ encodeJumpInstr (JAL (Word20 offset) dest) =
   ((offset' .&. bit 19) `shiftL` 12) .|.
   (bitsFromTo 0 9 offset' `shiftL` 21) .|.
   ((offset' .&. bit 10) `shiftL` 10) .|.
-  (bitsFromTo 11 18 offset' `shiftR` 1) .|.
+  (bitsFromTo 11 18 offset' `shiftL` 1) .|.
   (encodeRegister dest `shiftL` 7) .|.
   0b1101111
   where offset' = fromIntegral offset
