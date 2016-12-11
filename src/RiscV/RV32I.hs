@@ -43,6 +43,7 @@ data Instr
   | RRInstr !RegisterRegisterInstr
   | RIInstr !RegisterImmediateInstr
   | SyncInstr !SynchronizationInstr
+  deriving (Show, Eq, Ord)
 
 data JumpInstr
   = JAL !Word20
@@ -50,6 +51,7 @@ data JumpInstr
   | JALR !Word12
          !Register
          !Register
+  deriving (Show, Eq, Ord)
 
 data BranchCond
   = BEQ
@@ -58,22 +60,26 @@ data BranchCond
   | BLTU
   | BGE
   | BGEU
+  deriving (Show, Eq, Ord)
 
 data BranchInstr =
   Branch !Word12
          !BranchCond
          !Register
          !Register
+  deriving (Show, Eq, Ord)
 
 data LoadWidth
   = Width !Width
   | HalfUnsigned
   | ByteUnsigned
+  deriving (Show, Eq, Ord)
 
 data Width
   = Byte
   | Half
   | Word
+  deriving (Show, Eq, Ord)
 
 data MemoryInstr
   = LOAD !LoadWidth
@@ -84,6 +90,7 @@ data MemoryInstr
           !Word12
           !Register
           !Register
+  deriving (Show, Eq, Ord)
 
 data IOpcode
   = ADDI
@@ -92,11 +99,13 @@ data IOpcode
   | XORI
   | ORI
   | ANDI
+  deriving (Show, Eq, Ord)
 
 data ShiftOpcode
   = SLLI
   | SRLI
   | SRAI
+  deriving (Show, Eq, Ord)
 
 data RegisterImmediateInstr
   = IInstr !IOpcode
@@ -111,6 +120,7 @@ data RegisterImmediateInstr
         !Register
   | AUIPC !Word20
           !Register
+  deriving (Show, Eq, Ord)
 
 data ROpcode
   = ADD
@@ -123,36 +133,41 @@ data ROpcode
   | SRL
   | SUB
   | SRA
+  deriving (Show, Eq, Ord)
 
 data RegisterRegisterInstr =
   RInstr !ROpcode
          !Register
          !Register
          !Register
+  deriving (Show, Eq, Ord)
 
 data SyncOrdering = SyncOrd
   { deviceInput :: !Bool
   , deviceOutput :: !Bool
   , memoryReads :: !Bool
   , memoryWrites :: !Bool
-  }
+  } deriving (Show, Eq, Ord)
 
 data SynchronizationInstr
   = FENCE !SyncOrdering
           !SyncOrdering
   | FENCEI
+  deriving (Show, Eq, Ord)
 
 data EnvironmentInstr
   = ECALL
   | EBREAK
+  deriving (Show, Eq, Ord)
 
 -- | Control and status register instruction type
 data CSRType
   = ReadWrite
   | ReadSet
   | ReadClear
+  deriving (Show, Eq, Ord)
 
-newtype CSRRegister = CSRRegister Word12
+newtype CSRRegister = CSRRegister Word12 deriving (Show, Eq, Ord)
 
 -- | Control and Status Register Instructions
 data CSRInstr
@@ -164,6 +179,7 @@ data CSRInstr
               !CSRRegister
               !Word5
               !Register
+  deriving (Show, Eq, Ord)
 
 -- | Register 1-31 are general-purpose registers holding integer
 -- values.
@@ -202,7 +218,8 @@ data Register
   | X29
   | X30
   | X31
+  deriving (Show, Eq, Ord)
 
-newtype Word5 = Word5 Word8
-newtype Word12 = Word12 Word16
-newtype Word20 = Word20 Word32
+newtype Word5 = Word5 Word8 deriving (Show, Eq, Ord)
+newtype Word12 = Word12 Word16 deriving (Show, Eq, Ord)
+newtype Word20 = Word20 Word32 deriving (Show, Eq, Ord)
