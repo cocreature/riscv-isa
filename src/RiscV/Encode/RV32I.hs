@@ -1,4 +1,3 @@
-{-# OPTIONS_GHC -fno-warn-name-shadowing #-}
 {-# LANGUAGE BinaryLiterals #-}
 module RiscV.Encode.RV32I
   (encodeInstr
@@ -216,9 +215,9 @@ encodeSyncOrdering (SyncOrd inp outp reads writes) =
       | otherwise = 0
 
 encodeSynchronizationInstr :: SynchronizationInstr -> Word32
-encodeSynchronizationInstr (FENCE pred succ) =
-  (encodeSyncOrdering pred `shiftL` 24) .|.
-  (encodeSyncOrdering succ `shiftL` 20) .|.
+encodeSynchronizationInstr (FENCE pred' succ') =
+  (encodeSyncOrdering pred' `shiftL` 24) .|.
+  (encodeSyncOrdering succ' `shiftL` 20) .|.
   0b0001111
 encodeSynchronizationInstr FENCEI = setBit 0b0001111 12
 
