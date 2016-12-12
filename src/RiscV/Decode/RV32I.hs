@@ -6,11 +6,28 @@ module RiscV.Decode.RV32I
   ) where
 
 import Control.Monad.Except
+import Control.Monad.State.Strict
 import Data.Bits
 import Data.Monoid
 import Data.Word
 import RiscV.Internal.Util
 import RiscV.RV32I
+
+data GetState = GetState
+  { pos :: !Int
+  , word32 :: !Word32
+  }
+
+type GetT m a = StateT GetState m a
+
+runGetT :: Monad m => Word32 -> GetT m a -> m a
+runGetT w g = evalStateT g (GetState 31 w)
+
+getNextBits :: Monad m => Int -> GetT m Word32
+getNextBits i = do
+  GetState { pos = pos', word32 = w } <- get
+  put (GetState (pos' - i) w)
+  pure (extractBits (pos' - i + 1) pos' w)
 
 data DecodingError = DecodingError
   { errorMsg :: !String
@@ -47,19 +64,19 @@ decodeBranchCond cond =
       throwError $ DecodingError ("Unsupported branch condition: " <> show cond)
 
 decodeBranchInstr :: MonadError DecodingError m => Word32 -> m BranchInstr
-decodeBranchInstr word = do
-  cond <- decodeBranchCond (extractBits 12 14 word)
-  pure $ Branch (Word12 $ fromIntegral imm) cond (decodeRegister src2) (decodeRegister src1)
-  where
-    imm12 = extractBits 31 31 word
-    imm10to5 = extractBits 25 30 word
-    imm4to1 = extractBits 8 11 word
-    imm11 = extractBits 7 7 word
-    imm =
-      (imm12 `shiftL` 11) .|. (imm11 `shiftL` 10) .|. (imm10to5 `shiftL` 4) .|.
-      imm4to1
-    src2 = extractBits 20 24 word
-    src1 = extractBits 15 19 word
+decodeBranchInstr word =
+  runGetT word $ do
+    imm12 <- getNextBits 1
+    imm10to5 <- getNextBits 6
+    src2 <- decodeRegister <$> getNextBits 5
+    src1 <- decodeRegister <$> getNextBits 5
+    cond <- decodeBranchCond =<< getNextBits 3
+    imm4to1 <- getNextBits 4
+    imm11 <- getNextBits 1
+    let imm =
+          (imm12 `shiftL` 11) .|. (imm11 `shiftL` 10) .|. (imm10to5 `shiftL` 4) .|.
+          imm4to1
+    pure $ Branch (Word12 $ fromIntegral imm) cond src2 src1
 
 decodeCSROrEnvInstr :: MonadError DecodingError m => Word32 -> m Instr
 decodeCSROrEnvInstr word =
@@ -94,16 +111,18 @@ decodeCSRInstr word = do
     dest = decodeRegister (extractBits 7 11 word)
 
 decodeJALInstr :: MonadError DecodingError m => Word32 -> m JumpInstr
-decodeJALInstr word = pure (JAL (Word20 imm) dest)
-  where
-    dest = decodeRegister (extractBits 7 11 word)
-    imm20 = extractBits 31 31 word
-    imm10to1 = extractBits 21 30 word
-    imm11 = extractBits 20 20 word
-    imm19to12 = extractBits 12 19 word
-    imm =
-      (imm20 `shiftL` 19) .|. (imm19to12 `shiftL` 11) .|. (imm11 `shiftL` 10) .|.
-      imm10to1
+decodeJALInstr word =
+  runGetT word $ do
+    imm20 <- getNextBits 1
+    imm10to1 <- getNextBits 10
+    imm11 <- getNextBits 1
+    imm19to12 <- getNextBits 8
+    dest <- decodeRegister <$> getNextBits 5
+    let imm =
+          (imm20 `shiftL` 19) .|. (imm19to12 `shiftL` 11) .|.
+          (imm11 `shiftL` 10) .|.
+          imm10to1
+    pure (JAL (Word20 imm) dest)
 
 decodeJALRInstr :: MonadError DecodingError m => Word32 -> m JumpInstr
 decodeJALRInstr word = pure (JALR (Word12 offset) base dest)
@@ -140,14 +159,15 @@ decodeWidth twoBits =
       throwError $ DecodingError ("Unsupported store width: " <> show twoBits)
 
 decodeStoreInstr :: MonadError DecodingError m => Word32 -> m MemoryInstr
-decodeStoreInstr word = do
-  width <- decodeWidth (extractBits 12 13 word)
-  pure (STORE width (Word12 $ fromIntegral offset) src base)
-  where offset4to0 = extractBits 7 11 word
-        offset5to11 = extractBits 25 31 word
-        offset = (offset5to11 `shiftL` 5) .|. offset4to0
-        base = decodeRegister (extractBits 15 19 word)
-        src = decodeRegister (extractBits 20 24 word)
+decodeStoreInstr word =
+  runGetT word $ do
+    offset5to11 <- getNextBits 7
+    src <- decodeRegister <$> getNextBits 5
+    base <- decodeRegister <$> getNextBits 5
+    width <- decodeWidth =<< getNextBits 3
+    offset4to0 <- getNextBits 5
+    let offset = (offset5to11 `shiftL` 5) .|. offset4to0
+    pure (STORE width (Word12 $ fromIntegral offset) src base)
 
 decodeROpcode :: MonadError DecodingError m => Bool -> Word32 -> m ROpcode
 decodeROpcode funct7 threeBits =
@@ -163,13 +183,14 @@ decodeROpcode funct7 threeBits =
     _ -> throwError $ DecodingError ("Unsupported register-register opcode: " <> show threeBits)
 
 decodeRRInstr :: MonadError DecodingError m => Word32 -> m RegisterRegisterInstr
-decodeRRInstr word = do
-  opcode <- decodeROpcode funct7 (extractBits 12 14 word)
+decodeRRInstr word = runGetT word $ do
+  let funct7 = testBit word 30
+  _ <- getNextBits 7
+  src2 <- decodeRegister <$> getNextBits 5
+  src1 <- decodeRegister <$> getNextBits 5
+  opcode <- decodeROpcode funct7 =<< getNextBits 3
+  dest <- decodeRegister <$> getNextBits 5
   pure (RInstr opcode src2 src1 dest)
-  where src2 = decodeRegister (extractBits 20 24 word)
-        src1 = decodeRegister (extractBits 15 19 word)
-        dest = decodeRegister (extractBits 7 11 word)
-        funct7 = testBit word 30
 
 decodeIOpcode :: MonadError DecodingError m => Word32 -> m IOpcode
 decodeIOpcode threeBits =
